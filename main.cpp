@@ -3,6 +3,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <string>
+#include <vector>
 
 #include <unistd.h>
 #include <fcntl.h>
@@ -65,85 +66,53 @@ public:
         }
     }
     
-    char checkWin(int size) {
-        // Check rows
-        for (int i = 0; i < size; ++i) {
-            for (int j = 0; j <= size - winLength; ++j) {
-                if (board[i][j] != ' ') {
-                    bool win = true;
-                    for (int k = 1; k < winLength; ++k) {
-                        if (board[i][j + k] != board[i][j]) {
-                            win = false;
-                            break;
-                        }
-                    }
-                    if (win) return board[i][j];
-                }
-            }
+// Call this right after you place board[r][c] = player;
+// player is either 'X' or 'O'.
+char checkFrom(int r, int c) {
+    char p = board[r][c];
+    if (p == ' ') return ' ';          // sanity
+
+    // Four direction‐pairs: {dr,dc} are the “forward” deltas,
+    // and we’ll implicitly handle the backwards by negating.
+    const std::vector<std::pair<int,int>> dirs = {
+        {0,1},   // horizontal
+        {1,0},   // vertical
+        {1,1},   // diag down-right
+        {1,-1}   // anti-diag down-left
+    };
+
+    auto inb = [&](int rr, int cc){
+        return rr>=0 && rr<boardSize && cc>=0 && cc<boardSize;
+    };
+
+    for (auto [dr,dc] : dirs) {
+        int count = 1;  // start with the current cell
+
+        // walk forward
+        for (int step = 1; step < winLength; ++step) {
+            int nr = r + dr*step;
+            int nc = c + dc*step;
+            if (!inb(nr,nc) || board[nr][nc] != p) break;
+            ++count;
         }
-        
-        // Check columns
-        for (int j = 0; j < size; ++j) {
-            for (int i = 0; i <= size - winLength; ++i) {
-                if (board[i][j] != ' ') {
-                    bool win = true;
-                    for (int k = 1; k < winLength; ++k) {
-                        if (board[i + k][j] != board[i][j]) {
-                            win = false;
-                            break;
-                        }
-                    }
-                    if (win) return board[i][j];
-                }
-            }
+        // walk backward
+        for (int step = 1; step < winLength; ++step) {
+            int nr = r - dr*step;
+            int nc = c - dc*step;
+            if (!inb(nr,nc) || board[nr][nc] != p) break;
+            ++count;
         }
-        
-        // Check diagonals (top-left to bottom-right)
-        for (int i = 0; i <= size - winLength; ++i) {
-            for (int j = 0; j <= size - winLength; ++j) {
-                if (board[i][j] != ' ') {
-                    bool win = true;
-                    for (int k = 1; k < winLength; ++k) {
-                        if (board[i + k][j + k] != board[i][j]) {
-                            win = false;
-                            break;
-                        }
-                    }
-                    if (win) return board[i][j];
-                }
-            }
-        }
-        
-        // Check diagonals (top-right to bottom-left)
-        for (int i = 0; i <= size - winLength; ++i) {
-            for (int j = winLength - 1; j < size; ++j) {
-                if (board[i][j] != ' ') {
-                    bool win = true;
-                    for (int k = 1; k < winLength; ++k) {
-                        if (board[i + k][j - k] != board[i][j]) {
-                            win = false;
-                            break;
-                        }
-                    }
-                    if (win) return board[i][j];
-                }
-            }
-        }
-        
-        // Check for draw
-        bool full = true;
-        for (int i = 0; i < size; ++i) {
-            for (int j = 0; j < size; ++j) {
-                if (board[i][j] == ' ') {
-                    full = false;
-                    break;
-                }
-            }
-            if (!full) break;
-        }
-        
-        return full ? 'D' : ' ';
+
+        if (count >= winLength) 
+            return p;   // immediate exit on win
     }
+
+    // No win found on those four lines.  You can still check draw
+    // with a separate "full" flag if you like, or maintain a move
+    // counter that hits size*size.
+    return ' ';
+}
+
     
  
     
@@ -170,7 +139,9 @@ public:
                 case SDLK_SPACE:
                     if (board[cursorY][cursorX] == ' ') {
                         board[cursorY][cursorX] = currentPlayer;
+                        gameResult = checkFrom(cursorY, cursorX);
                         currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
+
                     }
                     break;
                 case SDLK_ESCAPE:
@@ -181,7 +152,7 @@ public:
     }
     
    
-    void startNewGame() {
+    void startNewGame(int size) {
         initBoard(boardSize);
         cursorX = cursorY = 0;
         currentPlayer = 'X';
@@ -191,7 +162,6 @@ public:
     
     void update() {
         if (currentState == PLAYING) {
-            gameResult = checkWin(boardSize);
             if (gameResult != ' ') {
                 currentState = GAME_OVER;
             }
@@ -266,7 +236,7 @@ public:
         std::cout << "Length of the line to win: \n";
         gameLogic.set_winLength(input());
         
-        gameLogic.initBoard(gameLogic.getBoardSize());
+        gameLogic.startNewGame(gameLogic.getBoardSize());
         gameLogic.set_currentState(PLAYING);
     }
     
@@ -285,7 +255,7 @@ public:
         }
 
 
-        std::cout << "Click anything\n";
+        std::cout << "Enter\n";
         std::getchar();
 
         std::cout << "Do you want to Continue???\n";
@@ -326,13 +296,15 @@ private:
     int cellSize;
 
 public:
-    GameRenderer() : window(nullptr), renderer(nullptr), windowSize(600), cellSize(0) {}
+    GameRenderer() : window(nullptr), renderer(nullptr), cellSize(0) {}
     
     ~GameRenderer() {
         cleanup();
     }
     
-    bool init() {
+    bool init(int size) {
+        windowSize = size;
+
         if (!SDL_Init(SDL_INIT_VIDEO != 0)) {
             std::cerr << "SDL initialization failed: " << SDL_GetError() << std::endl;
             return false;
@@ -398,7 +370,7 @@ public:
                     SDL_FRect outerRect = {(float)(px + margin), (float)(py + margin), 
                                          (float)(cellSize - 2*margin), (float)(cellSize - 2*margin)};
                     SDL_FRect innerRect = {(float)(px + margin + 10), (float)(py + margin + 10), 
-                                         (float)(cellSize - 2*margin - 20), (float)(cellSize - 2*margin - 20)};
+                                         (float)(cellSize - 2*margin ), (float)(cellSize - 2*margin - 20)};
                     SDL_RenderRect(renderer, &outerRect);
                     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
                     SDL_RenderFillRect(renderer, &innerRect);
@@ -444,19 +416,20 @@ public:
     TicTacToe() {}
     
     void run() {
-        if (!gameRenderer.init()) return;
+
         
         bool running = true;
         SDL_Event e;
         
-        gameRenderer.hideWindow(); // Start with window hidden
-        
+        if (!gameRenderer.init(1000)) return;
+
         while (running) {
             switch (gameLogic.getCurrentState()) {
                 case MENU: {
                     gameRenderer.hideWindow();
                     terminal.showMenu(gameLogic);
-                    
+
+
                     SDL_Delay(50); // Small delay to prevent excessive CPU usage
                     break;
                 }
