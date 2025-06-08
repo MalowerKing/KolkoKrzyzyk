@@ -3,11 +3,14 @@
 #include <iostream>
 #include <cstdlib>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/select.h>
+
+#include "ai.h"
 
 enum GameState {
     MENU,
@@ -27,8 +30,11 @@ private:
     
     char** board;
     int cursorX, cursorY;
+
+    char player;
     char currentPlayer;
     char gameResult;
+    int gameRounds = 0;
     
     // Menu variables
     int tempBoardSize;
@@ -70,6 +76,7 @@ public:
 // player is either 'X' or 'O'.
 char checkFrom(int r, int c) {
     char p = board[r][c];
+    gameRounds++;
     if (p == ' ') return ' ';          // sanity
 
     // Four direction‐pairs: {dr,dc} are the “forward” deltas,
@@ -110,12 +117,11 @@ char checkFrom(int r, int c) {
     // No win found on those four lines.  You can still check draw
     // with a separate "full" flag if you like, or maintain a move
     // counter that hits size*size.
+
+    if(gameRounds == boardSize*boardSize) return 'D';
     return ' ';
 }
-
-    
- 
-    
+     
     void handleGameInput(SDL_Event& e) {
         if (e.type == SDL_EVENT_KEY_DOWN) {
             switch (e.key.key) {
@@ -140,8 +146,10 @@ char checkFrom(int r, int c) {
                     if (board[cursorY][cursorX] == ' ') {
                         board[cursorY][cursorX] = currentPlayer;
                         gameResult = checkFrom(cursorY, cursorX);
-                        currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
-
+                        update();
+                        currentPlayer = (currentPlayer == 'X') ? 'O' : 'X'; 
+                        if(gameResult == ' ') 
+                        handleAIMove();
                     }
                     break;
                 case SDLK_ESCAPE:
@@ -150,6 +158,19 @@ char checkFrom(int r, int c) {
             }
         }
     }
+
+        void handleAIMove() {
+                AI_Player bot(board, boardSize, winLength);
+
+                std::pair<int, int> result = bot.minMax(0, currentPlayer);
+                std::cout << "##################### {" << result.first << "," << result.second << std::endl;
+
+                board[result.first][result.second] = currentPlayer;
+                gameResult = checkFrom(result.first, result.second);
+
+                currentPlayer = (currentPlayer == 'X') ? 'O' : 'X'; 
+                update();
+        }
     
    
     void startNewGame(int size) {
@@ -180,6 +201,7 @@ char checkFrom(int r, int c) {
     int getTempBoardSize() const { return tempBoardSize; }
     int getTempWinLength() const { return tempWinLength; }
     bool isEditingBoardSize() const { return editingBoardSize; }
+        char getWhosPlayer() const { return player;}
 
         void set_winLength(int lenght) {
                 winLength = lenght;
@@ -193,6 +215,7 @@ char checkFrom(int r, int c) {
                 currentState = state;
         }
 
+        void set_whosPlayer(char letter){ player = letter;}
 };
 
 // Terminal Interface Class - handles terminal I/O
@@ -235,9 +258,31 @@ public:
        gameLogic.set_boardSize(input());
         std::cout << "Length of the line to win: \n";
         gameLogic.set_winLength(input());
-        
-        gameLogic.startNewGame(gameLogic.getBoardSize());
-        gameLogic.set_currentState(PLAYING);
+
+        std::cout << "Choose Player (X or O): \n";
+        char choice;
+        while(1){
+        std::cin >> choice;
+        switch (choice)
+        {
+            case 'x': case 'X':
+                        std::cout << "Choosen Player X: \n";
+                        gameLogic.set_whosPlayer('X'); 
+                        gameLogic.startNewGame(gameLogic.getBoardSize());
+                        gameLogic.set_currentState(PLAYING);
+                        return;
+            case 'o': case 'O':
+                        std::cout << "Choosen Player O: \n";
+                        gameLogic.set_whosPlayer('O'); 
+                        gameLogic.startNewGame(gameLogic.getBoardSize());
+                        gameLogic.set_currentState(PLAYING);
+                        return;
+            default:
+                std::cout << "Invalid input. Please press X or O: \n";
+                // loop again
+        }
+        }
+
     }
     
     void showGameOver(GameLogic& gameLogic) {
@@ -389,7 +434,7 @@ public:
         SDL_RenderPresent(renderer);
         
         // Also show current player in terminal
-        std::cout << "\rCurrent Player: " << gameLogic.getCurrentPlayer() << " | Use WASD/Arrows to move, SPACE/ENTER to place, ESC for menu" << std::flush;
+        std::cout << "\rCurrent Player: " << gameLogic.getCurrentPlayer() << " | Use WASD/Arrows to move, SPACE/ENTER to place, ESC for menu" << std::endl;
     }
     
     void hideWindow() {
@@ -429,7 +474,6 @@ public:
                     gameRenderer.hideWindow();
                     terminal.showMenu(gameLogic);
 
-
                     SDL_Delay(50); // Small delay to prevent excessive CPU usage
                     break;
                 }
@@ -444,14 +488,13 @@ public:
                             continue;
                         }
                         gameLogic.handleGameInput(e);
-                    }
                     
                     // Update game logic
-                    gameLogic.update();
-                    
+
                     // Render game
                     gameRenderer.renderGame(gameLogic);
                     SDL_Delay(16);
+                }
                     break;
                 }
                 
