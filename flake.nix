@@ -34,8 +34,11 @@
               lcov
               vcpkg
               vcpkg-tool
+                SDL2
+                SDL2_ttf
 
-              glfw
+                sdl3
+                sdl3-ttf
             ]
             ++ (
               if system == "aarch64-darwin"

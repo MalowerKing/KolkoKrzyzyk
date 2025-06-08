@@ -1,0 +1,122 @@
+#include <iostream>
+#include <termios.h>
+#include <unistd.h>
+#include <cstdlib>
+
+using namespace std;
+
+char **board;
+int cursorX = 0, cursorY = 0;
+char currentPlayer = 'X';
+
+// Read a single character without waiting for Enter
+int getch() {
+    struct termios oldt, newt;
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    int c = getchar();
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    return c;
+}
+
+// Initialize dynamic 2D board
+void initBoard(int size) {
+    board = new char*[size];
+    for (int i = 0; i < size; ++i) {
+        board[i] = new char[size];
+        for (int j = 0; j < size; ++j) {
+            board[i][j] = ' ';
+        }
+    }
+}
+
+// Cleanup dynamic board
+void cleanupBoard(int size) {
+    for (int i = 0; i < size; ++i) {
+        delete[] board[i];
+    }
+    delete[] board;
+}
+
+// Draw board with cursor
+void drawBoard(int size) {
+    system("clear"); // Use "clear" on Unix
+    for (int i = 0; i < size; ++i) {
+        for (int j = 0; j < size; ++j) {
+            if (i == cursorY && j == cursorX) {
+                cout << '[' << board[i][j] << ']';
+            } else {
+                cout << ' ' << board[i][j] << ' ';
+            }
+            if (j < size - 1) cout << '|';
+        }
+        cout << endl;
+        if (i < size - 1) {
+            for (int k = 0; k < size; ++k) {
+                cout << "---";
+                if (k < size - 1) cout << '+';
+            }
+            cout << endl;
+        }
+    }
+    cout << "Player " << currentPlayer << "'s turn. Use W/A/S/D to move, Enter to place." << endl;
+}
+
+// Check win or draw
+char checkWin(int size) {
+    for (int i = 0; i < size; ++i) {
+        if (board[i][0] != ' ' && board[i][0] == board[i][1] && board[i][1] == board[i][2])
+            return board[i][0];
+        if (board[0][i] != ' ' && board[0][i] == board[1][i] && board[1][i] == board[2][i])
+            return board[0][i];
+    }
+    if (board[0][0] != ' ' && board[0][0] == board[1][1] && board[1][1] == board[2][2])
+        return board[0][0];
+    if (board[0][2] != ' ' && board[0][2] == board[1][1] && board[1][1] == board[2][0])
+        return board[0][2];
+
+    bool full = true;
+    for (int i = 0; i < size; ++i)
+        for (int j = 0; j < size; ++j)
+            if (board[i][j] == ' ') full = false;
+
+    if (full) return 'D';
+    return ' ';
+}
+
+int main() {
+    const int SIZE = 3;
+    initBoard(SIZE);
+
+    char result = ' ';
+    while ((result = checkWin(SIZE)) == ' ') {
+        drawBoard(SIZE);
+        int c = getch();
+        switch (c) {
+            case 'w': case 'W': if (cursorY > 0) cursorY--; break;
+            case 's': case 'S': if (cursorY < SIZE-1) cursorY++; break;
+            case 'a': case 'A': if (cursorX > 0) cursorX--; break;
+            case 'd': case 'D': if (cursorX < SIZE-1) cursorX++; break;
+            case '\n': case '\r':
+                if (board[cursorY][cursorX] == ' ') {
+                    board[cursorY][cursorX] = currentPlayer;
+                    currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    drawBoard(SIZE);
+    if (result == 'D')
+        cout << "Game ended in a draw!" << endl;
+    else
+        cout << "Player " << result << " wins!" << endl;
+
+    cleanupBoard(SIZE);
+    return 0;
+}
+
