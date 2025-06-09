@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <climits>
 #include <cstdint>
 #include <cstdlib>
 #include <ostream>
@@ -24,8 +25,57 @@ class AI_Player {
                 winCondition = win;
                 boardSize = size;
         };
+        
+        pair<int, int> move(char player) {
+                vector<pair<int, int>> possibleMoves;
+                pair<int, int> temp;
+                vector<pair<int, pair<int, int>>> evaluations;
+                int evaluation = 0;
 
-        pair<int, int> minMax(int depth, char player) {
+                //Generate possible moves
+               for (int i = 0; i<boardSize; i++) {
+                        for(int j = 0; j < boardSize; j++) {
+                                if(board[i][j] == ' ') {
+                                        temp = {i, j};
+                                        possibleMoves.push_back(temp);
+                                };
+                        };
+                } 
+
+                for (pair<int, int> move : possibleMoves) {
+                        board[move.first][move.second] = player;
+                        evaluation = minMax(0, player);
+                        board[move.first][move.second] = ' ';
+
+                        evaluations.push_back({evaluation, move});
+                }
+
+
+                pair<int, pair<int, int>> value = {0 ,{0, 0}};
+                
+                if(player == 'X') {
+                        value.first = INT_MIN;
+                        for (pair<int, pair<int, int>> eval : evaluations) {
+                                 if(eval.first > value.first) {
+                                        value = eval;
+                                }
+                        }
+                }
+                else{
+                        value.first = INT_MAX;
+                        for (pair<int, pair<int, int>> eval : evaluations) {
+                                 if(eval.first < value.first) {
+                                        value = eval;
+                                }
+                        }
+                }
+
+
+               return  value.second;
+
+        };
+
+        int minMax(int depth, char player) {
                 vector<pair<int, int>> possibleMoves;
                 pair<int, int> temp;
                 vector<int> evaluations;
@@ -41,51 +91,41 @@ class AI_Player {
                         };
                 } 
 
-                if(possibleMoves.empty() || depth == 4){
-                    temp = {-1, -1};
-                    return temp;
+                if(possibleMoves.empty() || depth >= 4){
+                    return evaluate();
                 }
 
                 for (pair<int, int> move : possibleMoves) {
                         board[move.first][move.second] = player;
-                        evaluation = evaluate();
-                        minMax(depth+1, (player == 'X') ? 'O' : 'X');
-                        board[move.first][move.second] = ' ';
 
-                        if(player == 'X') evaluations.push_back(evaluation-depth);
-                        else evaluations.push_back(evaluation+depth);
+                        evaluation = minMax(depth+1, (player == 'X') ? 'O' : 'X');
+
+                        evaluations.push_back(evaluation-depth);
+
+                        board[move.first][move.second] = ' ';
                 }
-                int index = 0;
+
+
                 int value = 0;
                 
                 if(player == 'X') {
-                        
-                        int max = -50;
-                        int counter = 1;
+                        value = INT_MIN; 
                         for (int eval : evaluations) {
-                                 if(eval > max) {
-                                        max = eval;
-                                        index = counter;
-                                        value = max;
+                                 if(eval > value) {
+                                        value = eval;
                                 }
-                                counter++;
                         }
                 }
                 else{
-                        int min = 50; 
-                        int counter = 1;
+                        value = INT_MAX;
                         for (int eval : evaluations) {
-                                if(eval < min) {
-                                        min = eval;
-                                        index = counter;
-                                        value = min;
+                                if(eval < value) {
+                                        value = eval;
                                 }
-                                counter ++;
                         }
                 };
-                cout << value  << " | {" << possibleMoves[index].first<<"," << possibleMoves[index].second << endl ;
 
-                return possibleMoves[index];
+                return value;
 
         };
         

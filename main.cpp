@@ -160,10 +160,9 @@ char checkFrom(int r, int c) {
     }
 
         void handleAIMove() {
-                AI_Player bot(board, boardSize, winLength);
+                AI_Player bot(board, boardSize ,winLength);
 
-                std::pair<int, int> result = bot.minMax(0, currentPlayer);
-                std::cout << "##################### {" << result.first << "," << result.second << std::endl;
+                std::pair<int, int> result = bot.move(currentPlayer);
 
                 board[result.first][result.second] = currentPlayer;
                 gameResult = checkFrom(result.first, result.second);
@@ -433,8 +432,6 @@ public:
         
         SDL_RenderPresent(renderer);
         
-        // Also show current player in terminal
-        std::cout << "\rCurrent Player: " << gameLogic.getCurrentPlayer() << " | Use WASD/Arrows to move, SPACE/ENTER to place, ESC for menu" << std::endl;
     }
     
     void hideWindow() {
