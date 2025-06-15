@@ -69,7 +69,7 @@ class AI_Player {
 
         int minMax(int depth, char player, int alpha, int beta) {
                 int evaluation = evaluate();
-                if(evaluation == 100 || evaluation == -100 || evaluation == -1 || depth >= 9){
+                if(evaluation == 100 || evaluation == -100 || evaluation == -1 || depth >= 10){
                     //cout << "GAME OVER: " << evaluation<< endl;
                     if(evaluation > 0) return evaluation - depth;
                     else if(evaluation < 0) return evaluation + depth;
@@ -212,9 +212,9 @@ int evaluate() {
         }
         if(draw) return -1;
         else {
-            if(winCondition - 1 == maxCount.first) return (maxCount.second == 'X') ? +20 : -20;
-            else if(winCondition -2 == maxCount.first) return (maxCount.second == 'X') ? +10 : -10;
-            else if(winCondition -3 == maxCount.first) return (maxCount.second == 'X') ? +5 : -5;
+            if(winCondition - 1 == maxCount.first) return (maxCount.second == 'X') ? +5 : -5;
+            else if(winCondition -2 == maxCount.first) return (maxCount.second == 'X') ? +3 : -3;
+            else if(winCondition -3 == maxCount.first) return (maxCount.second == 'X') ? +2 : -2;
             else return 0;
         }
     }

@@ -505,14 +505,16 @@ case PLAYING: {
                 running = false;
                 break;
             }
-        if('X' == gameLogic.getCurrentPlayer()){
-            gameLogic.handleAIMove();
-            gameRenderer.renderGame(gameLogic);
-        }
-        else {
-            gameLogic.handleGameInput(e);
-            gameRenderer.renderGame(gameLogic);
-        }
+
+            if('X' == gameLogic.getCurrentPlayer()){
+                gameLogic.handleAIMove();
+                gameRenderer.renderGame(gameLogic);
+            }
+            else {
+                gameLogic.handleGameInput(e);
+                gameRenderer.renderGame(gameLogic);
+                break;
+            }
         }
     }
 
