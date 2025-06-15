@@ -144,12 +144,12 @@ char checkFrom(int r, int c) {
                 case SDLK_RETURN:
                 case SDLK_SPACE:
                     if (board[cursorY][cursorX] == ' ') {
-                        board[cursorY][cursorX] = currentPlayer;
-                        gameResult = checkFrom(cursorY, cursorX);
-                        update();
-                        currentPlayer = (currentPlayer == 'X') ? 'O' : 'X'; 
-                        if(gameResult == ' ') 
-                        handleAIMove();
+                                board[cursorY][cursorX] = currentPlayer;
+                                gameResult = checkFrom(cursorY, cursorX);
+
+                                update();
+
+                                currentPlayer = (currentPlayer == 'X') ? 'O' : 'X'; 
                     }
                     break;
                 case SDLK_ESCAPE:
@@ -162,6 +162,8 @@ char checkFrom(int r, int c) {
         void handleAIMove() {
                 AI_Player bot(board, boardSize ,winLength);
 
+
+                std::cout << currentPlayer << std::endl;
                 std::pair<int, int> result = bot.move(currentPlayer);
 
                 board[result.first][result.second] = currentPlayer;
@@ -475,25 +477,48 @@ public:
                     break;
                 }
                 
-                case PLAYING: {
-                    gameRenderer.showWindow();
-                    
-                    // Handle SDL events for game
-                    while (SDL_PollEvent(&e)) {
-                        if (e.type == SDL_EVENT_QUIT) {
-                            running = false;
-                            continue;
-                        }
-                        gameLogic.handleGameInput(e);
-                    
-                    // Update game logic
+case PLAYING: {
+    gameRenderer.showWindow();
+    gameRenderer.renderGame(gameLogic); // Initial render if needed
 
-                    // Render game
-                    gameRenderer.renderGame(gameLogic);
-                    SDL_Delay(16);
-                }
-                    break;
-                }
+    if (gameLogic.getWhosPlayer() == 'X') {
+        // Wait for player input
+        while (SDL_WaitEvent(&e)) {
+            if (e.type == SDL_EVENT_QUIT) {
+                running = false;
+                break;
+            }
+
+            if(gameLogic.getWhosPlayer() == gameLogic.getCurrentPlayer()){
+                gameLogic.handleGameInput(e); 
+                gameRenderer.renderGame(gameLogic);
+                break; // Exit input wait after full turn
+            }
+            else {
+                gameLogic.handleAIMove();
+                gameRenderer.renderGame(gameLogic);
+            }
+        }
+    } else {
+        while (SDL_WaitEvent(&e)) {
+            if (e.type == SDL_EVENT_QUIT) {
+                running = false;
+                break;
+            }
+        if('X' == gameLogic.getCurrentPlayer()){
+            gameLogic.handleAIMove();
+            gameRenderer.renderGame(gameLogic);
+        }
+        else {
+            gameLogic.handleGameInput(e);
+            gameRenderer.renderGame(gameLogic);
+        }
+        }
+    }
+
+    SDL_Delay(16); // Cap frame rate
+    break;
+}
                 
                 case GAME_OVER: {
                     gameRenderer.hideWindow();

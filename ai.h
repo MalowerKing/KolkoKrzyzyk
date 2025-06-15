@@ -27,106 +27,85 @@ class AI_Player {
         };
         
         pair<int, int> move(char player) {
-                vector<pair<int, int>> possibleMoves;
-                pair<int, int> temp;
-                vector<pair<int, pair<int, int>>> evaluations;
                 int evaluation = 0;
+                pair<int, pair<int, int>> bestValue;
+
+                int alpha = INT_MIN;
+                int beta = INT_MAX;
+
+                if( player == 'X') bestValue.first = INT_MIN;
+                else bestValue.first = INT_MAX;
 
                 //Generate possible moves
-               for (int i = 0; i<boardSize; i++) {
+               for (int i = 0; i < boardSize; i++) {
                         for(int j = 0; j < boardSize; j++) {
                                 if(board[i][j] == ' ') {
-                                        temp = {i, j};
-                                        possibleMoves.push_back(temp);
+                                        board[i][j] = player;
+                                        printBoard();
+                                        if(player == 'X') evaluation = minMax(0, 'O', alpha, beta);
+                                        else evaluation = minMax(0, 'X', alpha, beta);
+
+                                        if (player=='X') alpha = max(alpha, evaluation);
+                                        else             beta  = min(beta, evaluation);
+
+                                        cout << evaluation << endl;
+
+                                        board[i][j] = ' ';
+
+                                        if( player == 'X') {
+                                            if(bestValue.first < evaluation) bestValue = {evaluation, {i, j}};
+                                        }
+                                        else {
+                                            if(bestValue.first > evaluation) bestValue = {evaluation, {i, j}};
+                                        }
                                 };
                         };
                 } 
 
-                for (pair<int, int> move : possibleMoves) {
-                        board[move.first][move.second] = player;
-                        evaluation = minMax(0, player);
-                        board[move.first][move.second] = ' ';
-
-                        evaluations.push_back({evaluation, move});
-                }
-
-
-                pair<int, pair<int, int>> value = {0 ,{0, 0}};
-                
-                if(player == 'X') {
-                        value.first = INT_MIN;
-                        for (pair<int, pair<int, int>> eval : evaluations) {
-                                 if(eval.first > value.first) {
-                                        value = eval;
-                                }
-                        }
-                }
-                else{
-                        value.first = INT_MAX;
-                        for (pair<int, pair<int, int>> eval : evaluations) {
-                                 if(eval.first < value.first) {
-                                        value = eval;
-                                }
-                        }
-                }
-
-
-               return  value.second;
+                cout << "{" << bestValue.first << "} --- {" << bestValue.second.first << " | " << bestValue.second.second << "}" << endl;
+               return  bestValue.second;
 
         };
 
-        int minMax(int depth, char player) {
-                vector<pair<int, int>> possibleMoves;
-                pair<int, int> temp;
-                vector<int> evaluations;
-                int evaluation = 0;
+        int minMax(int depth, char player, int alpha, int beta) {
+                int evaluation = evaluate();
+                if(evaluation == 100 || evaluation == -100 || evaluation == -1 || depth >= 9){
+                    //cout << "GAME OVER: " << evaluation<< endl;
+                    if(evaluation > 0) return evaluation - depth;
+                    else if(evaluation < 0) return evaluation + depth;
+                    else return 0;
+                }
+
+                int bestValue = 0;
+
+                if(player == 'X') bestValue = -1000;
+                else bestValue = 1000;
 
                 //Generate possible moves
                for (int i = 0; i<boardSize; i++) {
                         for(int j = 0; j < boardSize; j++) {
                                 if(board[i][j] == ' ') {
-                                        temp = {i, j};
-                                        possibleMoves.push_back(temp);
+                                    board[i][j] = player;
+
+                                    if(player == 'X') evaluation = minMax(depth+1, 'O', alpha, beta);
+                                    else evaluation = minMax(depth+1, 'X', alpha, beta);
+
+                                    if (player == 'X') {
+                                        bestValue = max(bestValue, evaluation);
+                                        alpha = max(alpha, bestValue);
+                                    } else {
+                                        bestValue = min(bestValue, evaluation);
+                                        beta = min(beta, bestValue);
+                                    }
+                                    
+                                    board[i][j] = ' ';
+                                    if(beta <= alpha) break;
                                 };
                         };
+                        if(beta <= alpha) break;
                 } 
-
-                if(possibleMoves.empty() || depth >= 4){
-                    return evaluate();
-                }
-
-                for (pair<int, int> move : possibleMoves) {
-                        board[move.first][move.second] = player;
-
-                        evaluation = minMax(depth+1, (player == 'X') ? 'O' : 'X');
-
-                        evaluations.push_back(evaluation-depth);
-
-                        board[move.first][move.second] = ' ';
-                }
-
-
-                int value = 0;
-                
-                if(player == 'X') {
-                        value = INT_MIN; 
-                        for (int eval : evaluations) {
-                                 if(eval > value) {
-                                        value = eval;
-                                }
-                        }
-                }
-                else{
-                        value = INT_MAX;
-                        for (int eval : evaluations) {
-                                if(eval < value) {
-                                        value = eval;
-                                }
-                        }
-                };
-
-                return value;
-
+                //cout << bestValue << ": for " << player << endl;
+                return bestValue;
         };
         
 ~AI_Player() {
@@ -150,184 +129,95 @@ void printBoard() {
         };
 
 int evaluate() {
-    // Check rows
-    for(int i = 0; i < boardSize; i++) {
-        int counter = 1;
-        char prev = board[i][0];
-        if(prev == ' ') {
-            counter = 0;
-            prev = ';';
-        }
-        
-        for(int j = 1; j < boardSize; j++) {
-            if(board[i][j] != ' ') {
-                if(prev == board[i][j]) {
-                    counter++;
-                } else {
-                    counter = 1;
-                    prev = board[i][j];
-                }
-                
-                if(counter >= winCondition) {
-                    return (prev == 'X') ? 20 : -20;
-                }
-            } else {
-                counter = 0;
-                prev = ';';
-            }
-        }
-    }
-    
-    // Check columns
-    for(int j = 0; j < boardSize; j++) {
-        int counter = 1;
-        char prev = board[0][j];
-        if(prev == ' ') {
-            counter = 0;
-            prev = ';';
-        }
-        
-        for(int i = 1; i < boardSize; i++) {
-            if(board[i][j] != ' ') {
-                if(prev == board[i][j]) {
-                    counter++;
-                } else {
-                    counter = 1;
-                    prev = board[i][j];
-                }
-                
-                if(counter >= winCondition) {
-                    return (prev == 'X') ? 20 : -20;
-                }
-            } else {
-                counter = 0;
-                prev = ';';
-            }
-        }
-    }
-    
-    // Check main diagonals (top-left to bottom-right)
-    for(int start = 0; start <= boardSize - winCondition; start++) {
-        // Check diagonal starting from (start, 0)
-        if(start < boardSize) {
-            int counter = 1;
-            char prev = board[start][0];
-            if(prev == ' ') {
-                counter = 0;
-                prev = ';';
-            }
-            
-            for(int k = 1; start + k < boardSize; k++) {
-                if(board[start + k][k] != ' ') {
-                    if(prev == board[start + k][k]) {
-                        counter++;
-                    } else {
-                        counter = 1;
-                        prev = board[start + k][k];
-                    }
-                    
-                    if(counter >= winCondition) {
-                        return (prev == 'X') ? 20 : -20;
-                    }
-                } else {
-                    counter = 0;
-                    prev = ';';
-                }
-            }
-        }
-        
-        // Check diagonal starting from (0, start+1)
-        if(start + 1 < boardSize) {
-            int counter = 1;
-            char prev = board[0][start + 1];
-            if(prev == ' ') {
-                counter = 0;
-                prev = ';';
-            }
-            
-            for(int k = 1; k < boardSize && start + 1 + k < boardSize; k++) {
-                if(board[k][start + 1 + k] != ' ') {
-                    if(prev == board[k][start + 1 + k]) {
-                        counter++;
-                    } else {
-                        counter = 1;
-                        prev = board[k][start + 1 + k];
-                    }
-                    
-                    if(counter >= winCondition) {
-                        return (prev == 'X') ? 20 : -20;
-                    }
-                } else {
-                    counter = 0;
-                    prev = ';';
-                }
-            }
-        }
-    }
-    
-    // Check anti-diagonals (top-right to bottom-left)
-    for(int start = winCondition - 1; start < boardSize; start++) {
-        // Check diagonal starting from (0, start)
-        int counter = 1;
-        char prev = board[0][start];
-        if(prev == ' ') {
-            counter = 0;
-            prev = ';';
-        }
-        
-        for(int k = 1; k < boardSize && start - k >= 0; k++) {
-            if(board[k][start - k] != ' ') {
-                if(prev == board[k][start - k]) {
-                    counter++;
-                } else {
-                    //counter = 1;
-                    prev = board[k][start - k];
-                }
-                
-                if(counter >= winCondition) {
-                    return (prev == 'X') ? 20 : -20;
-                }
-            } else {
-                counter = 0;
-                prev = ';';
-            }
-        }
-        
-        // Check diagonal starting from (start+1-boardSize+1, boardSize-1) 
-        if(start < boardSize - 1) {
-            int startRow = boardSize - start - 1;
-            if(startRow > 0 && startRow < boardSize) {
-                counter = 1;
-                prev = board[startRow][boardSize - 1];
-                if(prev == ' ') {
-                    counter = 0;
-                    prev = ';';
-                }
-                
-                for(int k = 1; startRow + k < boardSize && boardSize - 1 - k >= 0; k++) {
-                    if(board[startRow + k][boardSize - 1 - k] != ' ') {
-                        if(prev == board[startRow + k][boardSize - 1 - k]) {
-                            counter++;
-                        } else {
-                            counter = 1;
-                            prev = board[startRow + k][boardSize - 1 - k];
-                        }
-                        
-                        if(counter >= winCondition) {
-                            return (prev == 'X') ? 20 : -20;
-                        }
-                    } else {
-                        counter = 0;
-                        prev = ';';
-                    }
-                }
-            }
-        }
-    }
-    
-    return 0;
-}
+    bool draw = true;
+    pair<int, char> maxCount = {0, ' '};
+    // For every cell, if it’s X or O, try scanning forward in each dir
+    for (int i = 0; i < boardSize; ++i) {
+        for (int j = 0; j < boardSize; ++j) {
 
-        
+            char start = board[i][j];
+            if (start == ' ')  {draw = false; continue;}
+
+            int count = 0;
+
+
+            int x = 0;
+            int y = 0;
+
+            //Checking forward in X
+            for(int step = 0; step < winCondition; step++) {
+                x = i+step;
+
+                if(x >= boardSize) break;
+                if(board[x][j] == start) count++;
+                else break;
+            }
+            
+            if (count >= winCondition) {
+                return (start == 'X') ? +100 : -100;
+            }
+            if(count >= maxCount.first) maxCount = {count, start};
+
+            count = 0;
+
+            //Checking downward in Y
+            for(int step = 0; step < winCondition; step++) {
+                y = j+step;
+
+                if(y >= boardSize) break;
+                if(board[i][y] == start) count++;
+                else break;
+            }
+
+            if (count >= winCondition) {
+                return (start == 'X') ? +100 : -100;
+            }
+            if(count >= maxCount.first) maxCount = {count, start};
+
+
+
+            count = 0;
+
+            //Checking Horizontal in X Y
+            for(int step = 0; step < winCondition; step++) {
+                x = i+step;
+                y = j+step;
+
+                if(y >= boardSize || x >= boardSize) break;
+                if(board[x][y] == start) count++;
+                else break;
+            }
+
+            if (count >= winCondition) {
+                return (start == 'X') ? +100 : -100;
+            }
+            if(count >= maxCount.first) maxCount = {count, start};
+
+            count = 0;
+           //Checking Horizontal in -X Y
+            for(int step = 0; step < winCondition; step++) {
+                x = i+step;
+                y = j-step;
+
+                if(y < 0 || x >= boardSize) break;
+                if(board[x][y] == start) count++;
+                else break;
+            }
+
+            if (count >= winCondition) {
+                return (start == 'X') ? +100 : -100;
+            }
+            if(count >= maxCount.first) maxCount = {count, start};
+            }
+        }
+        if(draw) return -1;
+        else {
+            if(winCondition - 1 == maxCount.first) return (maxCount.second == 'X') ? +20 : -20;
+            else if(winCondition -2 == maxCount.first) return (maxCount.second == 'X') ? +10 : -10;
+            else if(winCondition -3 == maxCount.first) return (maxCount.second == 'X') ? +5 : -5;
+            else return 0;
+        }
+    }
+
 
 };
