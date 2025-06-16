@@ -6,6 +6,7 @@
 #include <vector>
 #include <utility>
 #include <iostream>
+#include <chrono>
 using namespace std;
 
 class AI_Player {
@@ -24,53 +25,69 @@ class AI_Player {
 
                 winCondition = win;
                 boardSize = size;
+                centreOfBoard = (size -1)/2;
         };
         
         pair<int, int> move(char player) {
                 int evaluation = 0;
                 pair<int, pair<int, int>> bestValue;
 
-                int alpha = INT_MIN;
-                int beta = INT_MAX;
+ 
+                int maxDepth = 3;
 
                 if( player == 'X') bestValue.first = INT_MIN;
                 else bestValue.first = INT_MAX;
+
+                int promoteCentre = 0;
+
+                auto start = std::chrono::high_resolution_clock::now();
+                while (1) {
+                int alpha = INT_MIN;
+                int beta = INT_MAX;
 
                 //Generate possible moves
                for (int i = 0; i < boardSize; i++) {
                         for(int j = 0; j < boardSize; j++) {
                                 if(board[i][j] == ' ') {
                                         board[i][j] = player;
-                                        printBoard();
-                                        if(player == 'X') evaluation = minMax(0, 'O', alpha, beta);
-                                        else evaluation = minMax(0, 'X', alpha, beta);
+                                        if(player == 'X') evaluation = minMax(0, 'O', alpha, beta, maxDepth);
+                                        else evaluation = minMax(0, 'X', alpha, beta, maxDepth);
 
                                         if (player=='X') alpha = max(alpha, evaluation);
                                         else             beta  = min(beta, evaluation);
 
-                                        cout << evaluation << endl;
 
                                         board[i][j] = ' ';
 
                                         if( player == 'X') {
-                                            if(bestValue.first < evaluation) bestValue = {evaluation, {i, j}};
+                                            if(bestValue.first < evaluation - promoteCentre) bestValue = {evaluation - promoteCentre, {i, j}};
                                         }
                                         else {
-                                            if(bestValue.first > evaluation) bestValue = {evaluation, {i, j}};
+                                            if(bestValue.first > evaluation + promoteCentre) bestValue = {evaluation + promoteCentre, {i, j}};
                                         }
                                 };
                         };
-                } 
+                }
 
-                cout << "{" << bestValue.first << "} --- {" << bestValue.second.first << " | " << bestValue.second.second << "}" << endl;
+                auto now = std::chrono::high_resolution_clock::now();
+                auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - start).count();
+
+                if (elapsed >= 30 || maxDepth > boardSize * boardSize) {
+                        break;
+                }
+                
+                cout << maxDepth << " | " << bestValue.first << endl;
+                maxDepth++;
+
+                }
+
                return  bestValue.second;
 
         };
 
-        int minMax(int depth, char player, int alpha, int beta) {
+        int minMax(int depth, char player, int alpha, int beta, int maxDepth) {
                 int evaluation = evaluate();
-                if(evaluation == 100 || evaluation == -100 || evaluation == -1 || depth >= 10){
-                    //cout << "GAME OVER: " << evaluation<< endl;
+                if(evaluation == 500 || evaluation == -500 || evaluation == -1 || depth >= maxDepth){
                     if(evaluation > 0) return evaluation - depth;
                     else if(evaluation < 0) return evaluation + depth;
                     else return 0;
@@ -87,8 +104,8 @@ class AI_Player {
                                 if(board[i][j] == ' ') {
                                     board[i][j] = player;
 
-                                    if(player == 'X') evaluation = minMax(depth+1, 'O', alpha, beta);
-                                    else evaluation = minMax(depth+1, 'X', alpha, beta);
+                                    if(player == 'X') evaluation = minMax(depth+1, 'O', alpha, beta, maxDepth);
+                                    else evaluation = minMax(depth+1, 'X', alpha, beta, maxDepth);
 
                                     if (player == 'X') {
                                         bestValue = max(bestValue, evaluation);
@@ -104,7 +121,6 @@ class AI_Player {
                         };
                         if(beta <= alpha) break;
                 } 
-                //cout << bestValue << ": for " << player << endl;
                 return bestValue;
         };
         
@@ -120,6 +136,7 @@ class AI_Player {
         char** board;
         int boardSize;
         int winCondition;
+        int centreOfBoard;
 
 void printBoard() {
         for(int i = 0; i < boardSize; i++) {
@@ -154,7 +171,7 @@ int evaluate() {
             }
             
             if (count >= winCondition) {
-                return (start == 'X') ? +100 : -100;
+                return (start == 'X') ? +500 : -500;
             }
             if(count >= maxCount.first) maxCount = {count, start};
 
@@ -170,7 +187,7 @@ int evaluate() {
             }
 
             if (count >= winCondition) {
-                return (start == 'X') ? +100 : -100;
+                return (start == 'X') ? +500 : -500;
             }
             if(count >= maxCount.first) maxCount = {count, start};
 
@@ -189,7 +206,7 @@ int evaluate() {
             }
 
             if (count >= winCondition) {
-                return (start == 'X') ? +100 : -100;
+                return (start == 'X') ? +500 : -500;
             }
             if(count >= maxCount.first) maxCount = {count, start};
 
@@ -205,16 +222,14 @@ int evaluate() {
             }
 
             if (count >= winCondition) {
-                return (start == 'X') ? +100 : -100;
+                return (start == 'X') ? +500 : -500;
             }
             if(count >= maxCount.first) maxCount = {count, start};
             }
         }
         if(draw) return -1;
         else {
-            if(winCondition - 1 == maxCount.first) return (maxCount.second == 'X') ? +5 : -5;
-            else if(winCondition -2 == maxCount.first) return (maxCount.second == 'X') ? +3 : -3;
-            else if(winCondition -3 == maxCount.first) return (maxCount.second == 'X') ? +2 : -2;
+            if(winCondition - 1 == maxCount.first) return (maxCount.second == 'X') ? +10 : -10;
             else return 0;
         }
     }

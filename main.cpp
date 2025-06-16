@@ -162,8 +162,6 @@ char checkFrom(int r, int c) {
         void handleAIMove() {
                 AI_Player bot(board, boardSize ,winLength);
 
-
-                std::cout << currentPlayer << std::endl;
                 std::pair<int, int> result = bot.move(currentPlayer);
 
                 board[result.first][result.second] = currentPlayer;
@@ -250,7 +248,7 @@ public:
     void showMenu(GameLogic& gameLogic) {
         
         std::cout << "========================================\n";
-        std::cout << "      ENHANCED TIC-TAC-TOE GAME\n";
+        std::cout << "               TIC-TAC-TOE GAME\n";
         std::cout << "========================================\n\n";
         
         std::cout << "Configure Game Settings:\n\n";
